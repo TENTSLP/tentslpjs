@@ -113,7 +113,7 @@ var index_1 = require("../index");
                 inputUtxos = inputUtxos.concat(balances.nonSlpUtxos);
                 // 6) Set the proper private key for each Utxo
                 inputUtxos.forEach(function (txo) { return txo.wif = fundingWif; });
-                return [4 /*yield*/, bitboxNetwork.simpleTokenMint(tokenIdHexToMint, mintQty, inputUtxos, tokenReceiverAddress, batonReceiverAddress, bchChangeReceiverAddress)];
+                return [4 /*yield*/, bitboxNetwork.simpleTokenMint(tokenIdHexToMint, mintQty, inputUtxos, tokenReceiverAddress, batonReceiverAddress, bchChangeReceiverAddress, true)];
             case 3:
                 mintTxid = _a.sent();
                 console.log("MINT txn complete:", mintTxid);

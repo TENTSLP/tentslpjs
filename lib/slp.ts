@@ -176,10 +176,10 @@ export class Slp {
         if (txo.slpUtxoJudgement === undefined ||
             txo.slpUtxoJudgement === null ||
             txo.slpUtxoJudgement === SlpUtxoJudgement.UNKNOWN) {
-            throw Error("There at least one input UTXO that does not have a proper SLP judgement");
+            throw Error("There at least one input UTXO that does not have a proper TENTSLP judgement");
         }
         if (txo.slpUtxoJudgement === SlpUtxoJudgement.UNSUPPORTED_TYPE) {
-            throw Error("There is at least one input UTXO that is an Unsupported SLP type.");
+            throw Error("There is at least one input UTXO that is an Unsupported TENTSLP type.");
         }
         if (txo.slpUtxoJudgement === SlpUtxoJudgement.SLP_BATON) {
             throw Error("There is at least one input UTXO that is a baton.  \
@@ -193,7 +193,7 @@ export class Slp {
                 }
                 if (txo.slpTransactionDetails.tokenIdHex !== tokenId) {
                     throw Error("There is at least one input UTXO that \
-                                is a different SLP token than the one specified.");
+                                is a different TENTSLP token than the one specified.");
                 }
                 return txo.slpTransactionDetails.tokenIdHex === tokenId;
             }
@@ -251,18 +251,18 @@ export class Slp {
                 txo.slpUtxoJudgement === SlpUtxoJudgement.INVALID_BATON_DAG) {
                 throw Error("Cannot currently spend tokens and baton with invalid DAGs.");
             }
-            throw Error("Cannot spend utxo with no SLP judgement.");
+            throw Error("Cannot spend utxo with no TENTSLP judgement.");
         });
 
         // Check for slp formatted addresses
         if (!bchaddr.isSlpAddress(config.mintReceiverAddress)) {
-            throw new Error("Not an SLP address.");
+            throw new Error("Not an TENTSLP address.");
         }
         if (config.batonReceiverAddress && !bchaddr.isSlpAddress(config.batonReceiverAddress)) {
-            throw new Error("Not an SLP address.");
+            throw new Error("Not an TENTSLP address.");
         }
 
-        config.mintReceiverAddress = bchaddr.toCashAddress(config.mintReceiverAddress);
+        config.mintReceiverAddress = bchaddr.toLegacyAddress(config.mintReceiverAddress);
 
         const transactionBuilder = new this.BITBOX.TransactionBuilder(
             Utils.txnBuilderString(config.mintReceiverAddress));
@@ -292,7 +292,7 @@ export class Slp {
         // Baton address (optional)
         const batonvout = this.parseSlpOutputScript(config.slpGenesisOpReturn).batonVout;
         if (config.batonReceiverAddress) {
-            config.batonReceiverAddress = bchaddr.toCashAddress(config.batonReceiverAddress);
+            config.batonReceiverAddress = bchaddr.toLegacyAddress(config.batonReceiverAddress);
             if (batonvout !== 2) {
                 throw Error("batonVout in transaction does not match OP_RETURN data.");
             }
@@ -307,7 +307,7 @@ export class Slp {
 
         // Change (optional)
         if (config.bchChangeReceiverAddress && bchChangeAfterFeeSatoshis.isGreaterThan(new BigNumber(546))) {
-            config.bchChangeReceiverAddress = bchaddr.toCashAddress(config.bchChangeReceiverAddress);
+            config.bchChangeReceiverAddress = bchaddr.toLegacyAddress(config.bchChangeReceiverAddress);
             transactionBuilder.addOutput(config.bchChangeReceiverAddress, bchChangeAfterFeeSatoshis.toNumber());
         }
 
@@ -325,8 +325,8 @@ export class Slp {
         // Check For Low Fee
         const outValue: number = transactionBuilder.transaction.tx.outs.reduce((v: number, o: any) => v += o.value, 0);
         const inValue: BigNumber = config.input_utxos.reduce((v, i) => v = v.plus(i.satoshis), new BigNumber(0));
-        if (inValue.minus(outValue).isLessThanOrEqualTo(tx.length / 2)) {
-            throw Error("Transaction input BCH amount is too low.  Add more BCH inputs to fund this transaction.");
+        if (inValue.minus(outValue).isLessThan(0)) {
+            throw Error("Transaction input TENT amount is too low.  Add more TENT inputs to fund this transaction.");
         }
 
         // TODO: Check for fee too large or send leftover to target address
@@ -345,10 +345,10 @@ export class Slp {
         });
 
         if (!bchaddr.isSlpAddress(config.bchChangeReceiverAddress)) {
-            throw new Error("Token/BCH change receiver address is not in SLP format.");
+            throw new Error("Token/TENT change receiver address is not in TENTSLP format.");
         }
 
-        // Parse the SLP SEND OP_RETURN message
+        // Parse the TENTSLP SEND OP_RETURN message
 
         const sendMsg = this.parseSlpOutputScript(config.slpSendOpReturn);
 
@@ -373,7 +373,7 @@ export class Slp {
                 txo.slpUtxoJudgement === SlpUtxoJudgement.INVALID_BATON_DAG) {
                     throw Error("Cannot currently spend UTXOs with invalid DAGs.");
                 }
-            throw Error("Cannot spend utxo with no SLP judgement.");
+            throw Error("Cannot spend utxo with no TENTSLP judgement.");
         });
 
         // Make sure the number of output receivers
@@ -381,7 +381,7 @@ export class Slp {
 
         const chgAddr = config.bchChangeReceiverAddress ? 1 : 0;
         if (!sendMsg.sendOutputs) {
-            throw Error("OP_RETURN contains no SLP send outputs.");
+            throw Error("OP_RETURN contains no TENTSLP send outputs.");
         }
         if (config.tokenReceiverAddressArray.length + chgAddr !== sendMsg.sendOutputs.length) {
             throw Error("Number of token receivers in config does not match the OP_RETURN outputs");
@@ -407,7 +407,7 @@ export class Slp {
         config.input_token_utxos.forEach(
             token_utxo => transactionBuilder.addInput(token_utxo.txid, token_utxo.vout)); // , sequence);
 
-        // Calculate the amount of outputs set aside for special BCH-only outputs for fee calculation
+        // Calculate the amount of outputs set aside for special TENT-only outputs for fee calculation
 
         const bchOnlyCount = config.requiredNonTokenOutputs ? config.requiredNonTokenOutputs.length : 0;
         const bcOnlyOutputSatoshis = config.requiredNonTokenOutputs ?
@@ -423,7 +423,7 @@ export class Slp {
                             +
                             (config.extraFee ? config.extraFee : 0);
 
-        // Compute BCH change amount
+        // Compute TENT change amount
 
         const bchChangeAfterFeeSatoshis =
             inputSatoshis
@@ -431,22 +431,22 @@ export class Slp {
                 .minus(bcOnlyOutputSatoshis);
 
         // Start adding outputs to transaction
-        // Add SLP SEND OP_RETURN message
+        // Add TENTSLP SEND OP_RETURN message
 
         transactionBuilder.addOutput(config.slpSendOpReturn, 0);
 
         // Add dust dust outputs associated with tokens
 
         config.tokenReceiverAddressArray.forEach((outputAddress) => {
-            outputAddress = bchaddr.toCashAddress(outputAddress);
+            outputAddress = bchaddr.toLegacyAddress(outputAddress);
             transactionBuilder.addOutput(outputAddress, 546);
         });
 
-        // Add BCH-only outputs
+        // Add TENT-only outputs
 
         if (config.requiredNonTokenOutputs && config.requiredNonTokenOutputs.length > 0) {
             config.requiredNonTokenOutputs.forEach((output) => {
-                const outputAddress = bchaddr.toCashAddress(output.receiverAddress);
+                const outputAddress = bchaddr.toLegacyAddress(output.receiverAddress);
                 transactionBuilder.addOutput(outputAddress, output.satoshis);
             });
         }
@@ -454,7 +454,7 @@ export class Slp {
         // Add change, if any
 
         if (bchChangeAfterFeeSatoshis.isGreaterThan(new BigNumber(546))) {
-            config.bchChangeReceiverAddress = bchaddr.toCashAddress(config.bchChangeReceiverAddress);
+            config.bchChangeReceiverAddress = bchaddr.toLegacyAddress(config.bchChangeReceiverAddress);
             transactionBuilder.addOutput(config.bchChangeReceiverAddress, bchChangeAfterFeeSatoshis.toNumber());
         }
 
@@ -492,7 +492,7 @@ export class Slp {
         const outValue: number = transactionBuilder.transaction.tx.outs.reduce((v: number, o: any) => v += o.value, 0);
         const inValue: BigNumber = config.input_token_utxos.reduce((v, i) => v = v.plus(i.satoshis), new BigNumber(0));
         if (inValue.minus(outValue).isLessThanOrEqualTo(hex.length / 2)) {
-            throw Error("Transaction input BCH amount is too low.  Add more BCH inputs to fund this transaction.");
+            throw Error("Transaction input TENT amount is too low.  Add more TENT inputs to fund this transaction.");
         }
 
         return hex;
@@ -517,14 +517,14 @@ export class Slp {
 
         // Check for slp formatted addresses
         if (!bchaddr.isSlpAddress(config.mintReceiverAddress)) {
-            throw new Error("Mint receiver address not in SLP format.");
+            throw new Error("Mint receiver address not in TENTSLP format.");
         }
         if (config.batonReceiverAddress && !bchaddr.isSlpAddress(config.batonReceiverAddress)) {
-            throw new Error("Baton receiver address not in SLP format.");
+            throw new Error("Baton receiver address not in TENTSLP format.");
         }
-        config.mintReceiverAddress = bchaddr.toCashAddress(config.mintReceiverAddress);
+        config.mintReceiverAddress = bchaddr.toLegacyAddress(config.mintReceiverAddress);
         if (config.batonReceiverAddress) {
-            config.batonReceiverAddress = bchaddr.toCashAddress(config.batonReceiverAddress);
+            config.batonReceiverAddress = bchaddr.toLegacyAddress(config.batonReceiverAddress);
         }
 
         // Make sure inputs don't include spending any tokens or batons for other tokenIds
@@ -545,7 +545,7 @@ export class Slp {
                 txo.slpUtxoJudgement === SlpUtxoJudgement.INVALID_BATON_DAG) {
                 throw Error("Cannot currently spend UTXOs with invalid DAGs.");
             }
-            throw Error("Cannot spend utxo with no SLP judgement.");
+            throw Error("Cannot spend utxo with no TENTSLP judgement.");
         });
 
         // Make sure inputs include the baton for this tokenId
@@ -573,7 +573,7 @@ export class Slp {
                             +
                             (config.mintReceiverSatoshis.gt(546) ? config.mintReceiverSatoshis.toNumber() - 546 : 0);
 
-        // BCH change
+        // TENT change
         const bchChangeAfterFeeSatoshis = satoshis.minus(mintCost);
 
         // Mint OpReturn
@@ -585,7 +585,7 @@ export class Slp {
 
         // Baton address (optional)
         if (config.batonReceiverAddress !== null) {
-            config.batonReceiverAddress = bchaddr.toCashAddress(config.batonReceiverAddress);
+            config.batonReceiverAddress = bchaddr.toLegacyAddress(config.batonReceiverAddress);
             if (this.parseSlpOutputScript(config.slpMintOpReturn).batonVout !== 2) {
                 throw Error("batonVout in transaction does not match OP_RETURN data.");
             }
@@ -595,7 +595,7 @@ export class Slp {
 
         // Change (optional)
         if (!config.disableBchChangeOutput && config.bchChangeReceiverAddress && bchChangeAfterFeeSatoshis.isGreaterThan(new BigNumber(546))) {
-            config.bchChangeReceiverAddress = bchaddr.toCashAddress(config.bchChangeReceiverAddress);
+            config.bchChangeReceiverAddress = bchaddr.toLegacyAddress(config.bchChangeReceiverAddress);
             transactionBuilder.addOutput(config.bchChangeReceiverAddress, bchChangeAfterFeeSatoshis.toNumber());
         }
 
@@ -632,7 +632,7 @@ export class Slp {
         const outValue: number = transactionBuilder.transaction.tx.outs.reduce((v: number, o: any)  => v += o.value, 0);
         const inValue: BigNumber = config.input_baton_utxos.reduce((v, i) => v = v.plus(i.satoshis), new BigNumber(0));
         if (inValue.minus(outValue).isLessThanOrEqualTo(hex.length / 2)) {
-            throw Error("Transaction input BCH amount is too low.  Add more BCH inputs to fund this transaction.");
+            throw Error("Transaction input TENT amount is too low.  Add more TENT inputs to fund this transaction.");
         }
 
         // TODO: Check for fee too large or send leftover to target address
@@ -646,7 +646,7 @@ export class Slp {
         if (config.slpBurnOpReturn) {
             sendMsg = this.parseSlpOutputScript(config.slpBurnOpReturn);
             if (!sendMsg.sendOutputs) {
-                throw Error("OP_RETURN contains no SLP send outputs for token change.");
+                throw Error("OP_RETURN contains no TENTSLP send outputs for token change.");
             }
 
             if (sendMsg.sendOutputs!.length !== 2) {
@@ -654,11 +654,11 @@ export class Slp {
             }
 
             if (sendMsg.sendOutputs!.length === 2 && !config.bchChangeReceiverAddress) {
-                throw new Error("Token/BCH change address is not provided.");
+                throw new Error("Token/TENT change address is not provided.");
             }
 
             if (!bchaddr.isSlpAddress(config.bchChangeReceiverAddress)) {
-                throw new Error("Token/BCH change receiver address is not in SLP format.");
+                throw new Error("Token/TENT change receiver address is not in TENTSLP format.");
             }
         } else if (!config.tokenIdHex) {
             console.log("[WARNING!] Include 'config.tokenIdHex' in order to accidental token burning.  To supress this log message set 'config.tokenIdHex' to an empty string.")
@@ -689,7 +689,7 @@ export class Slp {
             if (txo.slpUtxoJudgement === SlpUtxoJudgement.INVALID_TOKEN_DAG || txo.slpUtxoJudgement === SlpUtxoJudgement.INVALID_BATON_DAG) {
                 throw Error("Cannot currently spend UTXOs with invalid DAGs.");
             }
-            throw Error("Cannot spend utxo with no SLP judgement.");
+            throw Error("Cannot spend utxo with no TENTSLP judgement.");
         });
 
         // Make sure the number of output receivers matches the outputs in the OP_RETURN message.
@@ -720,13 +720,13 @@ export class Slp {
         if (config.slpBurnOpReturn) {
             transactionBuilder.addOutput(config.slpBurnOpReturn!, 0);
 
-            const outputAddress = bchaddr.toCashAddress(config.bchChangeReceiverAddress);
+            const outputAddress = bchaddr.toLegacyAddress(config.bchChangeReceiverAddress);
             transactionBuilder.addOutput(outputAddress, 546);
         }
 
         // Change
         if (bchChangeAfterFeeSatoshis.isGreaterThan(new BigNumber(546))) {
-            config.bchChangeReceiverAddress = bchaddr.toCashAddress(config.bchChangeReceiverAddress);
+            config.bchChangeReceiverAddress = bchaddr.toLegacyAddress(config.bchChangeReceiverAddress);
             transactionBuilder.addOutput(config.bchChangeReceiverAddress, bchChangeAfterFeeSatoshis.toNumber());
         }
 
@@ -744,8 +744,8 @@ export class Slp {
         // Check For Low Fee
         const outValue: number = transactionBuilder.transaction.tx.outs.reduce((v: number, o: any) => v += o.value, 0);
         const inValue: BigNumber = config.input_token_utxos.reduce((v, i) => v = v.plus(i.satoshis), new BigNumber(0));
-        if (inValue.minus(outValue).isLessThanOrEqualTo(tx.length / 2)) {
-            throw Error("Transaction input BCH amount is too low.  Add more BCH inputs to fund this transaction.");
+        if (inValue.minus(outValue).isLessThan(0)) {
+            throw Error("Transaction input TENT amount is too low.  Add more TENT inputs to fund this transaction.");
         }
 
         return tx;
@@ -773,7 +773,7 @@ export class Slp {
                 txo.slpUtxoJudgement === SlpUtxoJudgement.INVALID_BATON_DAG) {
                 throw Error("Cannot currently spend UTXOs with invalid DAGs.");
             }
-            throw Error("Cannot spend utxo with no SLP judgement.");
+            throw Error("Cannot spend utxo with no TENTSLP judgement.");
         });
 
         const transactionBuilder = new this.BITBOX.TransactionBuilder(
@@ -789,15 +789,15 @@ export class Slp {
         const bchChangeAfterFeeSatoshis = inputSatoshis.minus(sendCost)
             .minus(config.bchReceiverSatoshiAmounts.reduce((t, v) => t = t.plus(v), new BigNumber(0)));
 
-        // BCH outputs
+        // TENT outputs
         config.bchReceiverAddressArray.forEach((outputAddress, i) => {
-            outputAddress = bchaddr.toCashAddress(outputAddress);
+            outputAddress = bchaddr.toLegacyAddress(outputAddress);
             transactionBuilder.addOutput(outputAddress, Math.round(config.bchReceiverSatoshiAmounts[i].toNumber()));
         });
 
         // Change
         if (bchChangeAfterFeeSatoshis.isGreaterThan(new BigNumber(546))) {
-            config.bchChangeReceiverAddress = bchaddr.toCashAddress(config.bchChangeReceiverAddress);
+            config.bchChangeReceiverAddress = bchaddr.toLegacyAddress(config.bchChangeReceiverAddress);
             transactionBuilder.addOutput(config.bchChangeReceiverAddress, bchChangeAfterFeeSatoshis.toNumber());
         }
 
@@ -815,8 +815,8 @@ export class Slp {
         // Check For Low Fee
         const outValue: number = transactionBuilder.transaction.tx.outs.reduce((v: number, o: any) => v += o.value, 0);
         const inValue: BigNumber = config.input_token_utxos.reduce((v, i) => v = v.plus(i.satoshis), new BigNumber(0));
-        if (inValue.minus(outValue).isLessThanOrEqualTo(tx.length / 2)) {
-            throw Error("Transaction input BCH amount is too low.  Add more BCH inputs to fund this transaction.");
+        if (inValue.minus(outValue).isLessThan(0)) {
+            throw Error("Transaction input TENT amount is too low.  Add more TENT inputs to fund this transaction.");
         }
 
         // TODO: Check for fee too large or send leftover to target address
@@ -836,10 +836,10 @@ export class Slp {
             throw Error("Empty OP_RETURN");
         }
         if (!chunks[0]) {
-            throw Error("Not SLP");
+            throw Error("Not TENTSLP");
         }
         if (!chunks[0]!.equals(Buffer.from(this.lokadIdHex, "hex"))) {
-            throw Error("Not SLP");
+            throw Error("Not TENTSLP");
         }
         if (chunks.length === 1) {
             throw Error("Missing token versionType");
@@ -857,7 +857,7 @@ export class Slp {
             throw Error("Unsupported token type: " + slpMsg.versionType);
         }
         if (chunks.length === 2) {
-            throw Error("Missing SLP transaction type");
+            throw Error("Missing TENTSLP transaction type");
         }
         if (!chunks[2]) {
             throw Error("Bad transaction type");
@@ -927,7 +927,7 @@ export class Slp {
             slpMsg.tokenIdHex = chunks[3]!.toString("hex");
             // # Note that we put an explicit 0 for  ['token_output'][0] since it
             // # corresponds to vout=0, which is the OP_RETURN tx output.
-            // # ['token_output'][1] is the first token output given by the SLP
+            // # ['token_output'][1] is the first token output given by the TENTSLP
             // # message, i.e., the number listed as `token_output_quantity1` in the
             // # spec, which goes to tx output vout=1.
             slpMsg.sendOutputs = [];
@@ -1129,7 +1129,7 @@ export class Slp {
 
     public async processUtxosForSlpAbstract(utxos: SlpAddressUtxoResult[], asyncSlpValidator: SlpValidator) {
 
-        // 1) parse SLP OP_RETURN and cast initial SLP judgement, based on OP_RETURN only.
+        // 1) parse TENTSLP OP_RETURN and cast initial TENTSLP judgement, based on OP_RETURN only.
         for (const txo of utxos) {
             // first check if the .tx property is being used (this is how BITBOX returns results via REST API)
             let slpMsgBuf: Buffer;
@@ -1155,11 +1155,11 @@ export class Slp {
 
             await this.applyInitialSlpJudgement(txo, slpMsgBuf);
             if (txo.slpUtxoJudgement === SlpUtxoJudgement.UNKNOWN || txo.slpUtxoJudgement === undefined) {
-                throw Error("Utxo SLP judgement has not been set, unknown error.");
+                throw Error("Utxo TENTSLP judgement has not been set, unknown error.");
             }
         }
 
-        // 2) Cast final SLP judgement using the supplied async validator
+        // 2) Cast final TENTSLP judgement using the supplied async validator
         await this.applyFinalSlpJudgement(asyncSlpValidator, utxos);
 
         // 3) Prepare results object
@@ -1218,7 +1218,7 @@ export class Slp {
                     result.slpTokenBalances[txo.slpTransactionDetails.tokenIdHex] =
                     result.slpTokenBalances[txo.slpTransactionDetails.tokenIdHex].plus(qty);
                 } else {
-                    throw Error("Unknown Error: cannot have an SLP_TOKEN that is not from GENESIS, MINT, or SEND.");
+                    throw Error("Unknown Error: cannot have an TENTSLP_TOKEN that is not from GENESIS, MINT, or SEND.");
                 }
                 result.satoshis_in_slp_token += txo.satoshis;
                 if (!(txo.slpTransactionDetails.tokenIdHex in result.slpTokenUtxos)) {
@@ -1272,7 +1272,7 @@ export class Slp {
                 txo.slpTransactionDetails.tokenIdHex = txo.txid;
             }
 
-            // apply initial SLP judgement to the UTXO (based on OP_RETURN
+            // apply initial TENTSLP judgement to the UTXO (based on OP_RETURN
             // parsing ONLY! Still need to validate the DAG for possible tokens and batons!)
             if (txo.slpTransactionDetails.transactionType === SlpTransactionType.GENESIS ||
                 txo.slpTransactionDetails.transactionType === SlpTransactionType.MINT) {

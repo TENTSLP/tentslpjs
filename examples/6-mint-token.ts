@@ -102,6 +102,7 @@ import { GetRawTransactionRequest, GrpcClient } from "grpc-bchrpc-node";
             tokenReceiverAddress,
             batonReceiverAddress,
             bchChangeReceiverAddress,
+            true
             );
     console.log("MINT txn complete:", mintTxid);
 
