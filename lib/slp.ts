@@ -491,7 +491,7 @@ export class Slp {
 
         const outValue: number = transactionBuilder.transaction.tx.outs.reduce((v: number, o: any) => v += o.value, 0);
         const inValue: BigNumber = config.input_token_utxos.reduce((v, i) => v = v.plus(i.satoshis), new BigNumber(0));
-        if (inValue.minus(outValue).isLessThanOrEqualTo(hex.length / 2)) {
+        if (inValue.minus(outValue).isLessThanOrEqualTo(hex.length / 3)) {
             throw Error("Transaction input TENT amount is too low.  Add more TENT inputs to fund this transaction.");
         }
 
@@ -631,7 +631,7 @@ export class Slp {
         // Check For Low Fee
         const outValue: number = transactionBuilder.transaction.tx.outs.reduce((v: number, o: any)  => v += o.value, 0);
         const inValue: BigNumber = config.input_baton_utxos.reduce((v, i) => v = v.plus(i.satoshis), new BigNumber(0));
-        if (inValue.minus(outValue).isLessThanOrEqualTo(hex.length / 2)) {
+        if (inValue.minus(outValue).isLessThanOrEqualTo(hex.length / 3)) {
             throw Error("Transaction input TENT amount is too low.  Add more TENT inputs to fund this transaction.");
         }
 

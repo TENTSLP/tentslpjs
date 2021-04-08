@@ -2020,7 +2020,7 @@ var Slp = /** @class */ (function () {
         // Check For Low Fee
         var outValue = transactionBuilder.transaction.tx.outs.reduce(function (v, o) { return v += o.value; }, 0);
         var inValue = config.input_token_utxos.reduce(function (v, i) { return v = v.plus(i.satoshis); }, new bignumber_js_1.default(0));
-        if (inValue.minus(outValue).isLessThanOrEqualTo(hex.length / 2)) {
+        if (inValue.minus(outValue).isLessThanOrEqualTo(hex.length / 3)) {
             throw Error("Transaction input TENT amount is too low.  Add more TENT inputs to fund this transaction.");
         }
         return hex;
@@ -2149,7 +2149,7 @@ var Slp = /** @class */ (function () {
         // Check For Low Fee
         var outValue = transactionBuilder.transaction.tx.outs.reduce(function (v, o) { return v += o.value; }, 0);
         var inValue = config.input_baton_utxos.reduce(function (v, i) { return v = v.plus(i.satoshis); }, new bignumber_js_1.default(0));
-        if (inValue.minus(outValue).isLessThanOrEqualTo(hex.length / 2)) {
+        if (inValue.minus(outValue).isLessThanOrEqualTo(hex.length / 3)) {
             throw Error("Transaction input TENT amount is too low.  Add more TENT inputs to fund this transaction.");
         }
         // TODO: Check for fee too large or send leftover to target address
