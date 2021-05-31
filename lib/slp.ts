@@ -334,6 +334,97 @@ export class Slp {
         return tx;
     }
 
+    public estimatedFee(config: configBuildRawSendTx, type = 0x01) {
+
+        // Check proper address formats are given
+
+        config.tokenReceiverAddressArray.forEach((outputAddress) => {
+            if (!bchaddr.isSlpAddress(outputAddress)) {
+                throw new Error("Token receiver address not in SlpAddr format.");
+            }
+        });
+
+        if (!bchaddr.isSlpAddress(config.bchChangeReceiverAddress)) {
+            throw new Error("Token/TENT change receiver address is not in TENTSLP format.");
+        }
+
+        // Parse the TENTSLP SEND OP_RETURN message
+
+        const sendMsg = this.parseSlpOutputScript(config.slpSendOpReturn);
+
+        // Make sure we're not spending inputs from any other token or baton
+
+        let tokenInputQty = new BigNumber(0);
+        config.input_token_utxos.forEach((txo) => {
+            if (txo.slpUtxoJudgement === SlpUtxoJudgement.NOT_SLP) {
+                return;
+            }
+            if (txo.slpUtxoJudgement === SlpUtxoJudgement.SLP_TOKEN) {
+                if (txo.slpTransactionDetails.tokenIdHex !== sendMsg.tokenIdHex) {
+                    throw Error("Input UTXOs included a token for another tokenId.");
+                }
+                tokenInputQty = tokenInputQty.plus(txo.slpUtxoJudgementAmount);
+                return;
+            }
+            if (txo.slpUtxoJudgement === SlpUtxoJudgement.SLP_BATON) {
+                throw Error("Cannot spend a minting baton.");
+            }
+            if (txo.slpUtxoJudgement === SlpUtxoJudgement.INVALID_TOKEN_DAG ||
+                txo.slpUtxoJudgement === SlpUtxoJudgement.INVALID_BATON_DAG) {
+                throw Error("Cannot currently spend UTXOs with invalid DAGs.");
+            }
+            throw Error("Cannot spend utxo with no TENTSLP judgement.");
+        });
+
+        // Make sure the number of output receivers
+        // matches the outputs in the OP_RETURN message.
+
+        const chgAddr = config.bchChangeReceiverAddress ? 1 : 0;
+        if (!sendMsg.sendOutputs) {
+            throw Error("OP_RETURN contains no TENTSLP send outputs.");
+        }
+        if (config.tokenReceiverAddressArray.length + chgAddr !== sendMsg.sendOutputs.length) {
+            throw Error("Number of token receivers in config does not match the OP_RETURN outputs");
+        }
+
+        // Make sure token inputs == token outputs
+
+        const outputTokenQty = sendMsg.sendOutputs.reduce((v, o) => v = v.plus(o), new BigNumber(0));
+        if (!tokenInputQty.isEqualTo(outputTokenQty)) {
+            throw Error("Token input quantity does not match token outputs.");
+        }
+
+        // Create a transaction builder
+
+        const transactionBuilder = new this.BITBOX.TransactionBuilder(
+            Utils.txnBuilderString(config.tokenReceiverAddressArray[0]));
+        //  let sequence = 0xffffffff - 1;
+        //  let locktime = 0;
+
+        // Calculate the total input amount & add all inputs to the transaction
+
+        const inputSatoshis = config.input_token_utxos.reduce((t, i) => t.plus(i.satoshis), new BigNumber(0));
+        config.input_token_utxos.forEach(
+            token_utxo => transactionBuilder.addInput(token_utxo.txid, token_utxo.vout)); // , sequence);
+
+        // Calculate the amount of outputs set aside for special TENT-only outputs for fee calculation
+
+        const bchOnlyCount = config.requiredNonTokenOutputs ? config.requiredNonTokenOutputs.length : 0;
+        const bcOnlyOutputSatoshis = config.requiredNonTokenOutputs ?
+            config.requiredNonTokenOutputs.reduce((t, v) => t += v.satoshis, 0) : 0;
+
+        // Calculate mining fee cost
+
+        const sendCost = this.calculateSendCost(
+            config.slpSendOpReturn.length,
+            config.input_token_utxos.length,
+            config.tokenReceiverAddressArray.length + bchOnlyCount,
+            config.bchChangeReceiverAddress)
+            +
+            (config.extraFee ? config.extraFee : 0);
+        return sendCost;
+    }
+
     public buildRawSendTx(config: configBuildRawSendTx, type = 0x01) {
 
         // Check proper address formats are given

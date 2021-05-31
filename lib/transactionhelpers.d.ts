@@ -29,6 +29,18 @@ export interface MultisigRedeemData {
 export declare class TransactionHelpers {
     slp: Slp;
     constructor(slp: Slp);
+    simpleTokenEstimatedFee({ tokenId, sendAmounts, inputUtxos, tokenReceiverAddresses, changeReceiverAddress, requiredNonTokenOutputs, extraFee }: {
+        tokenId: string;
+        sendAmounts: BigNumber | BigNumber[];
+        inputUtxos: SlpAddressUtxoResult[];
+        tokenReceiverAddresses: string | string[];
+        changeReceiverAddress: string;
+        requiredNonTokenOutputs?: Array<{
+            satoshis: number;
+            receiverAddress: string;
+        }>;
+        extraFee?: number;
+    }): number;
     simpleTokenSend({ tokenId, sendAmounts, inputUtxos, tokenReceiverAddresses, changeReceiverAddress, requiredNonTokenOutputs, extraFee }: {
         tokenId: string;
         sendAmounts: BigNumber | BigNumber[];

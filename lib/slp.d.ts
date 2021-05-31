@@ -108,6 +108,7 @@ export declare class Slp {
     constructor(bitbox: BITBOX);
     buildRawNFT1GenesisTx(config: configBuildRawNFT1GenesisTx, type?: number): any;
     buildRawGenesisTx(config: configBuildRawGenesisTx, type?: number): any;
+    estimatedFee(config: configBuildRawSendTx, type?: number): string;
     buildRawSendTx(config: configBuildRawSendTx, type?: number): string;
     buildRawMintTx(config: configBuildRawMintTx, type?: number): string;
     buildRawBurnTx(burnAmount: BigNumber, config: configBuildRawBurnTx, type?: number): any;

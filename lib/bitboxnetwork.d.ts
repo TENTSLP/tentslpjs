@@ -20,6 +20,10 @@ export declare class BitboxNetwork implements SlpValidator {
         address: string;
         result: SlpBalancesResult;
     }[]>;
+    simpleTokenEstimatedFee(tokenId: string, sendAmounts: BigNumber | BigNumber[], inputUtxos: SlpAddressUtxoResult[], tokenReceiverAddresses: string | string[], changeReceiverAddress: string, requiredNonTokenOutputs?: {
+        satoshis: number;
+        receiverAddress: string;
+    }[]): Promise<string>;
     simpleTokenSend(tokenId: string, sendAmounts: BigNumber | BigNumber[], inputUtxos: SlpAddressUtxoResult[], tokenReceiverAddresses: string | string[], changeReceiverAddress: string, requiredNonTokenOutputs?: {
         satoshis: number;
         receiverAddress: string;
